@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FoodSupply | Marketplace B2B</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f4f6f9; color: #2c3e50; }
+        .navbar { background: white; padding: 1rem 2rem; box-shadow: 0 2px 10px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; }
+        .logo { font-size: 1.5rem; font-weight: bold; color: #e67e22; }
+        .nav-links { display: flex; gap: 1.5rem; align-items: center; flex-wrap: wrap; }
+        .nav-links a { cursor: pointer; text-decoration: none; color: #2c3e50; font-weight: 500; }
+        .nav-links a:hover { color: #e67e22; }
+        .status { padding: 0.3rem 1rem; border-radius: 20px; font-size: 0.8rem; }
+        .status-online { background: #d4edda; color: #155724; }
+        .status-offline { background: #f8d7da; color: #721c24; }
+        button { background: #e67e22; color: white; border: none; padding: 0.5rem 1rem; border-radius: 8px; cursor: pointer; font-weight: 500; }
+        button:hover { background: #d35400; }
+        .container { max-width: 1200px; margin: 2rem auto; padding: 0 1rem; }
+        .card { background: white; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .card h2 { margin-bottom: 1rem; color: #e67e22; border-left: 4px solid #e67e22; padding-left: 12px; }
+        input, select, textarea { width: 100%; padding: 0.7rem; margin-bottom: 0.8rem; border: 1px solid #ddd; border-radius: 8px; }
+        .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; }
+        
+        /* Tableau des produits */
+        .products-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+        .products-table th {
+            background: #27ae60;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+        }
+        .products-table td {
+            padding: 10px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .products-table tr:hover {
+            background: #f5f5f5;
+        }
+        
+        /* Tableau des commandes */
+        .orders-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+        .orders-table th {
+            background: #e67e22;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+        }
+        .orders-table td {
+            padding: 10px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .orders-table tr:hover {
+            background: #f5f5f5;
+        }
+        
+        .status-pending { color: #f39c12; font-weight: bold; }
+        .status-confirmed { color: #27ae60; font-weight: bold; }
+        .status-delivered { color: #2980b9; font-weight: bold; }
+        
+        .result { background: #f8f9fa; padding: 1rem; border-radius: 8px; font-family: monospace; font-size: 0.8rem; overflow-x: auto; margin-top: 1rem; }
+        .price { color: #e67e22; font-weight: bold; }
+        
+        @media (max-width: 768px) { 
+            .grid-2 { grid-template-columns: 1fr; } 
+            .navbar { flex-direction: column; text-align: center; }
+            .products-table, .orders-table { font-size: 12px; }
+            .products-table th, .products-table td, .orders-table th, .orders-table td { padding: 6px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <div class="logo">📦 FoodSupply</div>
+        <div class="nav-links">
+            <a onclick="showSection('products')">📦 Produits</a>
+            <a id="manageLink" onclick="showSection('manage')" style="display: none;">⚙️ Gérer</a>
+            <a onclick="showSection('orders')">🛒 Commandes</a>
+            <span id="roleDisplay" class="status status-offline"></span>
+            <span id="statusDisplay" class="status status-offline">🔴 Déconnecté</span>
+            <button onclick="logout()">Déconnexion</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <div id="authSection">
+            <div class="grid-2">
+                <div class="card">
+                    <h2>🔐 Connexion</h2>
+                    <input type="text" id="loginUser" placeholder="Nom d'utilisateur">
+                    <input type="password" id="loginPass" placeholder="Mot de passe">
+                    <button onclick="login()">Se connecter</button>
+                    <div id="loginResult" class="result"></div>
+                </div>
+                <div class="card">
+                    <h2>📝 Inscription</h2>
+                    <input type="text" id="regUser" placeholder="Nom d'utilisateur">
+                    <input type="email" id="regEmail" placeholder="Email">
+                    <input type="password" id="regPass" placeholder="Mot de passe">
+                    <select id="regRole">
+                        <option value="client">👤 Client (Restaurateur)</option>
+                        <option value="fournisseur">📦 Fournisseur</option>
+                    </select>
+                    <button onclick="register()">S'inscrire</button>
+                    <div id="registerResult" class="result"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="productsSection" style="display: none;">
+            <div class="card">
+                <h2>📦 Catalogue produits</h2>
+                <button onclick="loadProducts()">🔄 Actualiser</button>
+                <div id="productsList" class="result">Cliquez pour charger</div>
+            </div>
+        </div>
+
+        <div id="manageSection" style="display: none;">
+            <div class="card">
+                <h2>➕ Ajouter un produit</h2>
+                <div class="grid-2" style="gap: 1rem;">
+                    <input type="text" id="productName" placeholder="Nom du produit">
+                    <input type="text" id="productDesc" placeholder="Description">
+                    <input type="number" id="productPrice" placeholder="Prix unitaire">
+                    <select id="productUnit">
+                        <option value="kg">kg</option><option value="g">g</option>
+                        <option value="l">L</option><option value="piece">Pièce</option>
+                        <option value="carton">Carton</option>
+                    </select>
+                    <input type="number" id="productStock" placeholder="Stock">
+                    <button onclick="addProduct()">Ajouter</button>
+                </div>
+                <div id="addResult" class="result"></div>
+            </div>
+            <div class="card">
+                <h2>📋 Mes produits</h2>
+                <button onclick="loadMyProducts()">Actualiser</button>
+                <div id="myProductsList" class="result"></div>
+            </div>
+        </div>
+
+        <div id="ordersSection" style="display: none;">
+            <div class="card">
+                <h2>🛒 Historique des commandes</h2>
+                <button onclick="loadOrders()">🔄 Actualiser</button>
+                <div id="ordersList" class="result"></div>
+            </div>
+            <div class="card">
+                <h2>🛍️ Nouvelle commande</h2>
+                <div class="grid-2" style="gap: 1rem;">
+                    <input type="number" id="orderProductId" placeholder="ID du produit">
+                    <input type="number" id="orderQuantity" placeholder="Quantité">
+                    <input type="text" id="orderAddress" placeholder="Adresse de livraison">
+                    <button onclick="createOrder()">Commander</button>
+                </div>
+                <div id="orderResult" class="result"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let token = localStorage.getItem('token');
+        let userRole = localStorage.getItem('userRole');
+
+        const API_AUTH = 'http://localhost:8001/api/auth';
+        const API_SUPPLIER = 'http://localhost:8004/api/suppliers';
+        const API_ORDER = 'http://localhost:8003/api/orders';
+
+        function updateUI() {
+            const authSection = document.getElementById('authSection');
+            const productsSection = document.getElementById('productsSection');
+            const manageSection = document.getElementById('manageSection');
+            const ordersSection = document.getElementById('ordersSection');
+            const manageLink = document.getElementById('manageLink');
+            const roleDisplay = document.getElementById('roleDisplay');
+            const statusDisplay = document.getElementById('statusDisplay');
+
+            if (token) {
+                authSection.style.display = 'none';
+                productsSection.style.display = 'block';
+                ordersSection.style.display = 'block';
+                statusDisplay.innerHTML = '🟢 Connecté';
+                statusDisplay.className = 'status status-online';
+                roleDisplay.innerHTML = userRole === 'fournisseur' ? '📦 Fournisseur' : '👤 Restaurateur';
+                roleDisplay.className = 'status status-online';
+                if (userRole === 'fournisseur') {
+                    manageLink.style.display = 'inline-block';
+                    manageSection.style.display = 'block';
+                } else {
+                    manageLink.style.display = 'none';
+                    manageSection.style.display = 'none';
+                }
+            } else {
+                authSection.style.display = 'grid';
+                productsSection.style.display = 'none';
+                manageSection.style.display = 'none';
+                ordersSection.style.display = 'none';
+                statusDisplay.innerHTML = '🔴 Déconnecté';
+                statusDisplay.className = 'status status-offline';
+                roleDisplay.innerHTML = '';
+            }
+        }
+
+        function showSection(section) {
+            if (!token) return;
+            document.getElementById('productsSection').style.display = section === 'products' ? 'block' : 'none';
+            document.getElementById('manageSection').style.display = (section === 'manage' && userRole === 'fournisseur') ? 'block' : 'none';
+            document.getElementById('ordersSection').style.display = section === 'orders' ? 'block' : 'none';
+            if (section === 'products') loadProducts();
+            if (section === 'orders') loadOrders();
+            if (section === 'manage' && userRole === 'fournisseur') loadMyProducts();
+        }
+
+        async function login() {
+            const u = document.getElementById('loginUser').value;
+            const p = document.getElementById('loginPass').value;
+            if (!u || !p) { alert('Remplissez tous les champs'); return; }
+            try {
+                const res = await fetch(`${API_AUTH}/login/`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({username: u, password: p})
+                });
+                const data = await res.json();
+                if (data.access) {
+                    token = data.access;
+                    userRole = data.user?.role || 'client';
+                    localStorage.setItem('token', token);
+                    localStorage.setItem('userRole', userRole);
+                    updateUI();
+                    showSection('products');
+                    document.getElementById('loginResult').innerHTML = '<div style="color:green;">✅ Connexion réussie !</div>';
+                } else {
+                    document.getElementById('loginResult').innerHTML = '<div style="color:red;">❌ ' + JSON.stringify(data) + '</div>';
+                }
+            } catch (e) {
+                document.getElementById('loginResult').innerHTML = '<div style="color:red;">❌ Erreur réseau: ' + e.message + '</div>';
+            }
+        }
+
+        async function register() {
+            const u = document.getElementById('regUser').value;
+            const e = document.getElementById('regEmail').value;
+            const p = document.getElementById('regPass').value;
+            const r = document.getElementById('regRole').value;
+            if (!u || !e || !p) { alert('Remplissez tous les champs'); return; }
+            try {
+                const res = await fetch(`${API_AUTH}/register/`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({username: u, email: e, password: p, role: r})
+                });
+                const data = await res.json();
+                if (data.access) {
+                    token = data.access;
+                    userRole = r;
+                    localStorage.setItem('token', token);
+                    localStorage.setItem('userRole', userRole);
+                    updateUI();
+                    document.getElementById('registerResult').innerHTML = '<div style="color:green;">✅ Inscription réussie !</div>';
+                } else {
+                    document.getElementById('registerResult').innerHTML = '<div style="color:red;">❌ ' + JSON.stringify(data) + '</div>';
+                }
+            } catch (e) {
+                document.getElementById('registerResult').innerHTML = '<div style="color:red;">❌ Erreur réseau: ' + e.message + '</div>';
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('userRole');
+            token = null;
+            userRole = null;
+            updateUI();
+        }
+
+        async function loadProducts() {
+            const div = document.getElementById('productsList');
+            div.innerHTML = '<div style="text-align:center; padding:20px;">🔄 Chargement...</div>';
+            try {
+                const res = await fetch(`${API_SUPPLIER}/products/`);
+                const data = await res.json();
+                
+                if (data.length === 0) {
+                    div.innerHTML = '<div style="text-align:center; padding:20px;">📭 Aucun produit disponible</div>';
+                    return;
+                }
+                
+                let html = '<table class="products-table">';
+                html += '<tr><th>ID</th><th>Produit</th><th>Prix unitaire</th><th>Unité</th><th>Stock</th><th>Disponible</th></tr>';
+                for (let product of data) {
+                    html += `<tr><td>${product.id}</td><td><strong>${product.name}</strong><br><small>${product.description || ''}</small></td><td class="price">${product.price_per_unit} DA</td><td>${product.unit}</td><td>${product.stock}</td><td>${product.is_available ? '✅ Oui' : '❌ Non'}</td></tr>`;
+                }
+                html += '</table>';
+                div.innerHTML = html;
+            } catch (e) {
+                div.innerHTML = '<div style="color:red;">❌ Erreur: ' + e.message + '</div>';
+            }
+        }
+
+        async function loadMyProducts() {
+            if (!token || userRole !== 'fournisseur') return;
+            const div = document.getElementById('myProductsList');
+            div.innerHTML = '<div style="text-align:center; padding:20px;">🔄 Chargement...</div>';
+            try {
+                const res = await fetch(`${API_SUPPLIER}/products/`, {
+                    headers: {'Authorization': `Bearer ${token}`}
+                });
+                const data = await res.json();
+                
+                if (data.length === 0) {
+                    div.innerHTML = '<div style="text-align:center; padding:20px;">📭 Aucun produit</div>';
+                    return;
+                }
+                
+                let html = '<table class="products-table">';
+                html += '<tr><th>ID</th><th>Produit</th><th>Prix</th><th>Unité</th><th>Stock</th></tr>';
+                for (let product of data) {
+                    html += `<tr><td>${product.id}</td><td>${product.name}</td><td class="price">${product.price_per_unit} DA</td><td>${product.unit}</td><td>${product.stock}</td></tr>`;
+                }
+                html += '</table>';
+                div.innerHTML = html;
+            } catch (e) {
+                div.innerHTML = '<div style="color:red;">❌ Erreur: ' + e.message + '</div>';
+            }
+        }
+
+        async function addProduct() {
+            if (!token || userRole !== 'fournisseur') return;
+            const name = document.getElementById('productName').value;
+            const desc = document.getElementById('productDesc').value;
+            const price = document.getElementById('productPrice').value;
+            const unit = document.getElementById('productUnit').value;
+            const stock = document.getElementById('productStock').value;
+            if (!name || !price) { alert('Nom et prix requis'); return; }
+            try {
+                const res = await fetch(`${API_SUPPLIER}/products/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({name, description: desc, price_per_unit: price, unit, stock})
+                });
+                if (res.ok) {
+                    alert('✅ Produit ajouté !');
+                    document.getElementById('productName').value = '';
+                    document.getElementById('productDesc').value = '';
+                    document.getElementById('productPrice').value = '';
+                    document.getElementById('productStock').value = '';
+                    loadMyProducts();
+                } else {
+                    const err = await res.json();
+                    alert('❌ Erreur: ' + JSON.stringify(err));
+                }
+            } catch (e) {
+                alert('❌ Erreur: ' + e.message);
+            }
+        }
+
+        async function loadOrders() {
+            if (!token) return;
+            const div = document.getElementById('ordersList');
+            div.innerHTML = '<div style="text-align:center; padding:20px;">🔄 Chargement...</div>';
+            try {
+                const res = await fetch(`${API_ORDER}/orders/`);
+                const data = await res.json();
+                
+                if (data.length === 0) {
+                    div.innerHTML = '<div style="text-align:center; padding:20px;">📭 Aucune commande</div>';
+                    return;
+                }
+                
+                let html = '<table class="orders-table">';
+                html += '<tr><th>ID</th><th>Fournisseur</th><th>Montant</th><th>Adresse</th><th>Statut</th><th>Date</th></tr>';
+                for (let order of data) {
+                    let statusClass = '';
+                    let statusText = '';
+                    if (order.status === 'pending') { statusClass = 'status-pending'; statusText = '⏳ En attente'; }
+                    else if (order.status === 'confirmed') { statusClass = 'status-confirmed'; statusText = '✅ Confirmée'; }
+                    else if (order.status === 'delivered') { statusClass = 'status-delivered'; statusText = '🚚 Livrée'; }
+                    else statusText = order.status;
+                    
+                    html += `<tr><td>${order.id}</td><td>${order.supplier_name}</td><td class="price">${order.total_amount} DA</td><td>${order.delivery_address}</td><td class="${statusClass}">${statusText}</td><td>${new Date(order.created_at).toLocaleString()}</td></tr>`;
+                }
+                html += '</table>';
+                div.innerHTML = html;
+            } catch (e) {
+                div.innerHTML = '<div style="color:red;">❌ Erreur: ' + e.message + '</div>';
+            }
+        }
+
+        async function createOrder() {
+            const productId = document.getElementById('orderProductId').value;
+            const quantity = document.getElementById('orderQuantity').value;
+            const address = document.getElementById('orderAddress').value;
+            if (!productId || !quantity || !address) { alert('Remplissez tous les champs'); return; }
+
+            let productPrice = 0;
+            let productName = '';
+            try {
+                const res = await fetch(`${API_SUPPLIER}/products/${productId}/`);
+                const product = await res.json();
+                productPrice = parseFloat(product.price_per_unit);
+                productName = product.name;
+            } catch (e) {
+                alert('❌ Produit non trouvé');
+                return;
+            }
+
+            const total = productPrice * quantity;
+
+            try {
+                const res = await fetch(`${API_ORDER}/orders/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        supplier_id: 1,
+                        supplier_name: 'Ma Société',
+                        total_amount: total,
+                        delivery_address: address,
+                        items: [{
+                            product_id: parseInt(productId),
+                            product_name: productName,
+                            product_price: productPrice,
+                            quantity: parseInt(quantity)
+                        }]
+                    })
+                });
+                if (res.ok) {
+                    alert('✅ Commande créée !');
+                    document.getElementById('orderProductId').value = '';
+                    document.getElementById('orderQuantity').value = '';
+                    document.getElementById('orderAddress').value = '';
+                    loadOrders();
+                } else {
+                    const err = await res.json();
+                    alert('❌ Erreur: ' + JSON.stringify(err));
+                }
+            } catch (e) {
+                alert('❌ Erreur: ' + e.message);
+            }
+        }
+
+        updateUI();
+    </script>
+</body>
+</html>

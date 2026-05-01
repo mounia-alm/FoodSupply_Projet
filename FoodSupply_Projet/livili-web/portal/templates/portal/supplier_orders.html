@@ -1,0 +1,112 @@
+{% extends "portal/base.html" %}
+{% block title %}Supplier orders — Livrili{% endblock %}
+{% block content %}
+<section class="card">
+  <h1>Incoming restaurant requests</h1>
+  <p class="muted">Track and update orders with line-by-line pricing details.</p>
+  <div id="msg" class="error"></div>
+  <div style="margin-top:12px;">
+    <label for="search-orders">Search by product or restaurant name</label>
+    <input id="search-orders" placeholder="Ex: Pasta / Restaurant El Bahia...">
+  </div>
+  <div class="card" style="margin-top:12px; overflow:auto;">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Status</th>
+          <th>Total</th>
+          <th>Phone</th>
+          <th>Contact</th>
+          <th>Address</th>
+          <th>Items</th>
+          <th>Set status</th>
+        </tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+  const statuses = ["pending","confirmed","preparation","shipped","delivered"];
+  let orders = [];
+
+  function computeLineTotal(line) {
+    return Number(line.quantity || 0) * Number(line.product_price || 0);
+  }
+
+  function lineLabel(line) {
+    return `${line.product_name} - ${formatUnitLabel(line.unit || "piece", line.quantity || 0)} - ${formatPriceDZD(line.product_price || 0)} => ${formatPriceDZD(computeLineTotal(line))}`;
+  }
+
+  function filteredOrders() {
+    const q = document.getElementById("search-orders").value.trim().toLowerCase();
+    if (!q) return orders;
+    return orders.filter((o) => {
+      const restaurantName = String(o.restaurant_name || o.contact_name || "").toLowerCase();
+      const inRestaurant = restaurantName.includes(q);
+      const inLines = (o.items || []).some((i) => String(i.product_name || "").toLowerCase().includes(q));
+      return inRestaurant || inLines;
+    });
+  }
+
+  function renderRows() {
+    const tbody = document.getElementById("rows");
+    tbody.innerHTML = "";
+    filteredOrders().forEach((o) => {
+      const tr = document.createElement("tr");
+      const items = (o.items || []).map((i) => `<div>${lineLabel(i)}</div>`).join("");
+      const opts = statuses.map((s) => `<option value="${s}" ${s===o.status?"selected":""}>${s}</option>`).join("");
+      tr.innerHTML = `
+        <td>${o.id}</td>
+        <td>${o.status}</td>
+        <td>${formatPriceDZD(o.total_amount || 0)}</td>
+        <td>${o.restaurant_phone || "-"}</td>
+        <td>${o.restaurant_name || o.contact_name || "-"}</td>
+        <td>${o.restaurant_address || "-"}</td>
+        <td>${items}</td>
+        <td><select data-id="${o.id}" class="status-select">${opts}</select></td>
+      `;
+      tbody.appendChild(tr);
+    });
+    document.querySelectorAll(".status-select").forEach((sel) => {
+      sel.addEventListener("change", async (ev) => {
+        const id = ev.target.getAttribute("data-id");
+        const status = ev.target.value;
+        const patch = await fetch(`${API_ORDER}/orders/${id}/`, {
+          method: "PATCH",
+          headers: authHeaders(true),
+          body: JSON.stringify({ status }),
+        });
+        if (!patch.ok) {
+          const err = await patch.json().catch(() => ({}));
+          alert(JSON.stringify(err));
+        } else {
+          load();
+        }
+      });
+    });
+  }
+
+  async function load() {
+    const msg = document.getElementById("msg");
+    msg.textContent = "";
+    if (!livToken()) {
+      msg.textContent = "Please log in as a supplier.";
+      return;
+    }
+    const res = await fetch(`${API_ORDER}/orders/`, { headers: authHeaders(false) });
+    const data = await res.json().catch(() => []);
+    if (!res.ok) {
+      msg.textContent = JSON.stringify(data);
+      return;
+    }
+    orders = data;
+    renderRows();
+  }
+  document.getElementById("search-orders").addEventListener("input", renderRows);
+  load();
+</script>
+{% endblock %}

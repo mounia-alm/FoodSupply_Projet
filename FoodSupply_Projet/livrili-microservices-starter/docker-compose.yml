@@ -1,0 +1,66 @@
+﻿services:
+  traefik:
+    image: traefik:v2.10
+    command:
+      - "--providers.file.filename=/etc/traefik/dynamic/routes.yml"
+      - "--entrypoints.web.address=:80"
+      - "--api.insecure=true"
+    ports:
+      - "80:80"
+      - "8080:8080"
+    volumes:
+      - ./traefik/routes.yml:/etc/traefik/dynamic/routes.yml:ro
+
+  consul:
+    image: hashicorp/consul:1.19
+    command: agent -dev -client=0.0.0.0 -ui
+    ports:
+      - "8500:8500"
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+  auth-service:
+    build: ./services/auth-service
+    ports:
+      - "8001:8000"
+
+  user-service:
+    build: ./services/user-service
+    ports:
+      - "8002:8000"
+
+  product-service:
+    build: ./services/product-service
+    ports:
+      - "8003:8000"
+
+  order-service:
+    build: ./services/order-service
+    environment:
+      RABBITMQ_HOST: rabbitmq
+      PRODUCT_SERVICE_URL: http://product-service:8000/api/products
+    depends_on:
+      - rabbitmq
+    ports:
+      - "8004:8000"
+
+  notification-worker:
+    build: ./services/notification-worker
+    environment:
+      RABBITMQ_HOST: rabbitmq
+    depends_on:
+      - rabbitmq
+
+  frontend-web:
+    build: ./frontend-web
+    depends_on:
+      - auth-service
+      - user-service
+      - product-service
+      - order-service
+    ports:
+      - "5173:5173"

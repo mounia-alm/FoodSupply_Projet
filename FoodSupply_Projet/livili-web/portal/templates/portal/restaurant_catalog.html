@@ -1,0 +1,188 @@
+{% extends "portal/base.html" %}
+{% block title %}Catalog — Livrili{% endblock %}
+{% block content %}
+<section class="card">
+  <h1>Supplier catalog</h1>
+  <p class="muted">Products are grouped by supplier. Sign in as a restaurant to place an order.</p>
+  <div id="notice" class="banner muted"></div>
+  <div class="grid" style="margin-top:12px;">
+    <div>
+      <label for="supplier-filter">Filter by supplier</label>
+      <input id="supplier-filter" placeholder="Supplier name...">
+    </div>
+    <div>
+      <label for="product-filter">Filter by product</label>
+      <input id="product-filter" placeholder="Product name...">
+    </div>
+  </div>
+  <div id="catalog"></div>
+</section>
+
+<div id="modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.35); align-items:center; justify-content:center; padding:18px;">
+  <div class="card" style="max-width:520px; width:100%;">
+    <h2>Place order</h2>
+    <p class="muted" id="modal-product"></p>
+    <div class="grid" style="margin-top:10px;">
+      <div>
+        <label for="qty">Quantity</label>
+        <input id="qty" type="number" min="1" value="1">
+      </div>
+      <div><strong id="modal-price" class="pill"></strong></div>
+      <div><strong id="modal-total" class="pill"></strong></div>
+      <div>
+        <label for="phone">Phone number</label>
+        <input id="phone" autocomplete="tel">
+      </div>
+      <div>
+        <label for="contact">Contact name</label>
+        <input id="contact" autocomplete="name">
+      </div>
+      <div>
+        <label for="address">Restaurant address</label>
+        <textarea id="address" rows="3"></textarea>
+      </div>
+      <div class="row">
+        <button type="button" id="confirm-order">Submit order</button>
+        <button type="button" class="secondary" id="cancel-order">Cancel</button>
+      </div>
+      <div id="order-msg" class="error"></div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+  const catalogEl = document.getElementById("catalog");
+  const notice = document.getElementById("notice");
+  let products = [];
+  let selection = null;
+
+  function groupBySupplier(items) {
+    const map = new Map();
+    for (const p of items) {
+      const key = p.supplier_name || "Supplier";
+      if (!map.has(key)) map.set(key, []);
+      map.get(key).push(p);
+    }
+    return map;
+  }
+  function filters() {
+    return {
+      supplier: document.getElementById("supplier-filter").value.trim().toLowerCase(),
+      product: document.getElementById("product-filter").value.trim().toLowerCase(),
+    };
+  }
+  function applyFilters(items) {
+    const f = filters();
+    return items.filter((p) => {
+      const s = String(p.supplier_name || "").toLowerCase();
+      const n = String(p.name || "").toLowerCase();
+      return (!f.supplier || s.includes(f.supplier)) && (!f.product || n.includes(f.product));
+    });
+  }
+  function updateOrderTotals() {
+    if (!selection) return;
+    const qty = Number(document.getElementById("qty").value || 1);
+    const unitPrice = Number(selection.price_per_unit || 0);
+    document.getElementById("modal-price").textContent = `Price: ${formatPriceDZD(unitPrice)} / ${String(selection.unit || "piece").toUpperCase()}`;
+    document.getElementById("modal-total").textContent = `Total: ${formatPriceDZD(qty * unitPrice)}`;
+  }
+
+  async function load() {
+    notice.textContent = livToken() ? "" : "Read-only browsing — log in as a restaurant to order.";
+    const res = await fetch(`${API_SUPPLIER}/products/`);
+    products = await res.json().catch(() => []);
+    const grouped = groupBySupplier(applyFilters(products));
+    catalogEl.innerHTML = "";
+    for (const [supplier, plist] of grouped.entries()) {
+      const wrap = document.createElement("section");
+      wrap.className = "supplier-block card";
+      wrap.innerHTML = `<h2>${supplier}</h2>`;
+      plist.forEach((p) => {
+        const div = document.createElement("div");
+        div.className = "product";
+        div.innerHTML = `
+          <div class="row" style="justify-content:space-between;">
+            <div>
+              <strong>${p.name}</strong>
+              <div class="muted">${p.description || ""}</div>
+              <div style="margin-top:8px;">
+                <span class="pill">${p.price_per_unit} / ${p.unit}</span>
+                <span class="pill">${formatPriceDZD(p.price_per_unit)}</span>
+              </div>
+            </div>
+            <button data-id="${p.id}" class="btn order-btn" ${livToken() ? "" : "disabled"}>Order</button>
+          </div>
+        `;
+        wrap.appendChild(div);
+      });
+      catalogEl.appendChild(wrap);
+    }
+    document.querySelectorAll(".order-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const id = Number(btn.getAttribute("data-id"));
+        selection = products.find((x) => x.id === id);
+        openModal();
+      });
+    });
+  }
+
+  const modal = document.getElementById("modal");
+  function openModal() {
+    if (!livToken()) {
+      alert("Please log in as a restaurant.");
+      return;
+    }
+    const u = JSON.parse(sessionStorage.getItem("liv_user") || "{}");
+    if (u.role && u.role !== "restaurant") {
+      alert("Only restaurant accounts can place orders.");
+      return;
+    }
+    document.getElementById("modal-product").textContent = `${selection.name} — ${selection.supplier_name}`;
+    updateOrderTotals();
+    modal.style.display = "flex";
+  }
+  function closeModal() {
+    modal.style.display = "none";
+    selection = null;
+  }
+
+  document.getElementById("cancel-order").addEventListener("click", closeModal);
+  document.getElementById("qty").addEventListener("input", updateOrderTotals);
+  document.getElementById("confirm-order").addEventListener("click", async () => {
+    const msg = document.getElementById("order-msg");
+    msg.textContent = "";
+    const qty = Number(document.getElementById("qty").value || "1");
+    const payload = {
+      supplier_id: selection.supplier,
+      supplier_name: selection.supplier_name,
+      restaurant_phone: document.getElementById("phone").value.trim(),
+      contact_name: document.getElementById("contact").value.trim(),
+      restaurant_address: document.getElementById("address").value.trim(),
+      items: [{
+        product_id: selection.id,
+        product_name: selection.name,
+        product_price: selection.price_per_unit,
+        unit: selection.unit,
+        quantity: qty,
+      }],
+    };
+    const res = await fetch(`${API_ORDER}/orders/`, {
+      method: "POST",
+      headers: authHeaders(true),
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      msg.textContent = JSON.stringify(data);
+      return;
+    }
+    closeModal();
+    notice.textContent = `Order #${data.id} submitted successfully.`;
+  });
+
+  document.getElementById("supplier-filter").addEventListener("input", load);
+  document.getElementById("product-filter").addEventListener("input", load);
+  load();
+</script>
+{% endblock %}

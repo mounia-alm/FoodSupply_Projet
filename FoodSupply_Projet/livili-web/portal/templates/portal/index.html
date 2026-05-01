@@ -1,0 +1,30 @@
+{% extends "portal/base.html" %}
+{% block title %}Livrili — Home{% endblock %}
+{% block content %}
+<section class="card">
+  <h1>Welcome to Livrili</h1>
+  <p class="muted">
+    Livrili connects restaurants with suppliers: browse consolidated catalogs,
+    place bulk orders with delivery details, and let suppliers fulfil requests with clear status tracking.
+  </p>
+  <div class="row" style="margin-top:18px;">
+    <a class="btn" href="/signup/">Create an account</a>
+    <a class="btn secondary" href="/login/">Log in</a>
+  </div>
+</section>
+<section class="card" style="margin-top:18px;">
+  <h2>Audience</h2>
+  <div class="grid" style="margin-top:10px;">
+    <div class="product">
+      <strong>Restaurants</strong>
+      <p class="muted" style="margin:8px 0 0;">Browse products grouped by supplier name and submit orders with phone, contact name, restaurant address, and quantities.</p>
+      <div style="margin-top:10px;"><a href="/restaurant/catalog/">Open catalog</a></div>
+    </div>
+    <div class="product">
+      <strong>Suppliers</strong>
+      <p class="muted" style="margin:8px 0 0;">Maintain your catalogue and manage incoming restaurant requests with statuses from pending through delivered.</p>
+      <div style="margin-top:10px;"><a href="/supplier/products/">Supplier workspace</a></div>
+    </div>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,13 @@
+http:
+  routers:
+    frontend:
+      rule: "Host(`localhost`) || Host(`127.0.0.1`)"
+      entryPoints:
+        - web
+      service: frontend
+
+  services:
+    frontend:
+      loadBalancer:
+        servers:
+          - url: "http://host.docker.internal:5173"

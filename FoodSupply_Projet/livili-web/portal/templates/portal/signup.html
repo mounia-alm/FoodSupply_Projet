@@ -1,0 +1,75 @@
+{% extends "portal/base.html" %}
+{% block title %}Sign up — Livrili{% endblock %}
+{% block content %}
+<section class="card" style="max-width:560px;">
+  <h1>Create your Livrili account</h1>
+  <p class="muted">Dedicated signup page — roles are enforced end‑to‑end.</p>
+  <div class="grid" style="margin-top:14px;">
+    <div>
+      <label for="username">Username</label>
+      <input id="username" autocomplete="username">
+    </div>
+    <div>
+      <label for="email">Email</label>
+      <input id="email" type="email" autocomplete="email">
+    </div>
+    <div>
+      <label for="password">Password</label>
+      <input id="password" type="password" autocomplete="new-password">
+    </div>
+    <div>
+      <label for="phone">Phone (optional)</label>
+      <input id="phone" autocomplete="tel">
+    </div>
+    <div>
+      <label>Account type</label>
+      <div class="row">
+        <label><input type="radio" name="role" value="restaurant" checked> Restaurant</label>
+        <label><input type="radio" name="role" value="supplier"> Supplier</label>
+      </div>
+    </div>
+    <div class="row">
+      <button type="button" id="btn-signup">Sign up</button>
+      <a class="btn secondary" href="/login/">Already registered?</a>
+    </div>
+    <div id="msg" class="error"></div>
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+  document.getElementById("btn-signup").addEventListener("click", async () => {
+    const msg = document.getElementById("msg");
+    msg.textContent = "";
+    try {
+      const username = document.getElementById("username").value.trim();
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value;
+      const phone = document.getElementById("phone").value.trim();
+      const role = document.querySelector('input[name="role"]:checked').value;
+      if (!username || !email || !password) {
+        msg.textContent = "Username, email, and password are required.";
+        return;
+      }
+      const res = await fetch(`${API_AUTH}/register/`, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ username, email, password, role, phone }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        msg.textContent = data.detail || JSON.stringify(data);
+        return;
+      }
+      sessionStorage.setItem("liv_access", data.access);
+      sessionStorage.setItem("liv_refresh", data.refresh);
+      sessionStorage.setItem("liv_user", JSON.stringify(data.user));
+      if (data.user.role === "restaurant") window.location.href = "/restaurant/";
+      else if (data.user.role === "supplier") window.location.href = "/supplier/";
+      else window.location.href = "/";
+    } catch (e) {
+      msg.textContent = "Network error: is the auth service running? (" + (e && e.message ? e.message : e) + ")";
+    }
+  });
+</script>
+{% endblock %}

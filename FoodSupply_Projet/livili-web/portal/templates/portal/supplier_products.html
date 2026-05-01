@@ -1,0 +1,211 @@
+{% extends "portal/base.html" %}
+{% block title %}Supplier products — FourniExpress{% endblock %}
+{% block content %}
+<section class="card">
+  <h1>Your products</h1>
+  <p class="muted">Create, search, edit, and delete your catalog items.</p>
+  <div id="msg" class="error"></div>
+  <div style="margin-top:12px;">
+    <label for="search-products">Search by product name</label>
+    <input id="search-products" placeholder="Ex: Tomato, Olive oil...">
+  </div>
+  <div class="card" style="margin-top:12px;">
+    <h2>Add product</h2>
+    <div class="grid">
+      <div>
+        <label for="name">Name</label>
+        <input id="name">
+      </div>
+      <div>
+        <label for="description">Description</label>
+        <textarea id="description" rows="2"></textarea>
+      </div>
+      <div>
+        <label for="unit">Unit</label>
+        <select id="unit">
+          <option value="KG">KG</option>
+          <option value="ML">ML</option>
+          <option value="piece">piece</option>
+        </select>
+      </div>
+      <div>
+        <label for="price">Price per unit (DZD)</label>
+        <input id="price" type="number" step="0.01">
+      </div>
+      <div>
+        <label for="quantity">Quantity</label>
+        <input id="quantity" type="number" step="1">
+      </div>
+      <div><button type="button" id="btn-add">Save product</button></div>
+    </div>
+  </div>
+  <div id="list" class="grid" style="margin-top:14px;"></div>
+</section>
+<div id="edit-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.35); align-items:center; justify-content:center; padding:18px;">
+  <div class="card" style="max-width:620px; width:100%;">
+    <h2>Edit product</h2>
+    <div class="grid">
+      <div><label for="edit-name">Name</label><input id="edit-name"></div>
+      <div><label for="edit-description">Description</label><textarea id="edit-description" rows="2"></textarea></div>
+      <div>
+        <label for="edit-unit">Unit</label>
+        <select id="edit-unit">
+          <option value="KG">KG</option>
+          <option value="ML">ML</option>
+          <option value="piece">piece</option>
+        </select>
+      </div>
+      <div><label for="edit-price">Price per unit (DZD)</label><input id="edit-price" type="number" step="0.01"></div>
+      <div><label for="edit-quantity">Quantity</label><input id="edit-quantity" type="number" step="1"></div>
+      <div class="row">
+        <button type="button" id="save-edit">Save changes</button>
+        <button type="button" class="secondary" id="cancel-edit">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+  let products = [];
+  let editSelection = null;
+
+  function renderedProducts() {
+    const q = document.getElementById("search-products").value.trim().toLowerCase();
+    return products.filter((p) => (p.name || "").toLowerCase().includes(q));
+  }
+
+  function renderList() {
+    const list = document.getElementById("list");
+    list.innerHTML = "";
+    renderedProducts().forEach((p) => {
+      const qty = p.stock ?? p.quantity ?? 0;
+      const div = document.createElement("div");
+      div.className = "product";
+      div.innerHTML = `<strong>${p.name}</strong>
+        <div class="muted">${p.description || ""}</div>
+        <div style="margin-top:6px;">
+          <span class="pill">${formatPriceDZD(p.price_per_unit)} / ${String(p.unit || "piece").toUpperCase()}</span>
+          <span class="pill">${formatUnitLabel(p.unit, qty)}</span>
+        </div>
+        <div class="row" style="margin-top:10px;">
+          <button type="button" class="btn-edit" data-id="${p.id}">Edit</button>
+          <button type="button" class="secondary btn-delete" data-id="${p.id}">Delete</button>
+        </div>`;
+      list.appendChild(div);
+    });
+    document.querySelectorAll(".btn-edit").forEach((btn) => {
+      btn.addEventListener("click", () => openEdit(Number(btn.getAttribute("data-id"))));
+    });
+    document.querySelectorAll(".btn-delete").forEach((btn) => {
+      btn.addEventListener("click", () => removeProduct(Number(btn.getAttribute("data-id"))));
+    });
+  }
+
+  async function load() {
+    const msg = document.getElementById("msg");
+    msg.textContent = "";
+    if (!livToken()) {
+      msg.textContent = "Please log in as a supplier.";
+      return;
+    }
+    const res = await fetch(`${API_SUPPLIER}/products/?mine=1`, { headers: authHeaders(false) });
+    const data = await res.json().catch(() => []);
+    if (!res.ok) {
+      msg.textContent = JSON.stringify(data);
+      return;
+    }
+    products = data;
+    renderList();
+  }
+
+  document.getElementById("btn-add").addEventListener("click", async () => {
+    const msg = document.getElementById("msg");
+    msg.textContent = "";
+    const body = {
+      name: document.getElementById("name").value.trim(),
+      description: document.getElementById("description").value.trim(),
+      unit: document.getElementById("unit").value,
+      price_per_unit: Number(document.getElementById("price").value || 0),
+      stock: Number(document.getElementById("quantity").value || 0),
+      is_available: true,
+    };
+    const res = await fetch(`${API_SUPPLIER}/products/`, {
+      method: "POST",
+      headers: authHeaders(true),
+      body: JSON.stringify(body),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      msg.textContent = JSON.stringify(data);
+      return;
+    }
+    document.getElementById("name").value = "";
+    document.getElementById("description").value = "";
+    document.getElementById("price").value = "";
+    document.getElementById("quantity").value = "";
+    load();
+  });
+
+  function openEdit(id) {
+    editSelection = products.find((p) => p.id === id);
+    if (!editSelection) return;
+    document.getElementById("edit-name").value = editSelection.name || "";
+    document.getElementById("edit-description").value = editSelection.description || "";
+    document.getElementById("edit-unit").value = editSelection.unit || "piece";
+    document.getElementById("edit-price").value = editSelection.price_per_unit || 0;
+    document.getElementById("edit-quantity").value = editSelection.stock ?? editSelection.quantity ?? 0;
+    document.getElementById("edit-modal").style.display = "flex";
+  }
+
+  function closeEdit() {
+    editSelection = null;
+    document.getElementById("edit-modal").style.display = "none";
+  }
+
+  async function removeProduct(id) {
+    const msg = document.getElementById("msg");
+    msg.textContent = "";
+    if (!confirm("Delete this product?")) return;
+    const res = await fetch(`${API_SUPPLIER}/products/${id}/`, {
+      method: "DELETE",
+      headers: authHeaders(false),
+    });
+    if (!res.ok && res.status !== 204) {
+      const err = await res.json().catch(() => ({}));
+      msg.textContent = JSON.stringify(err);
+      return;
+    }
+    load();
+  }
+
+  document.getElementById("save-edit").addEventListener("click", async () => {
+    const msg = document.getElementById("msg");
+    msg.textContent = "";
+    if (!editSelection) return;
+    const body = {
+      name: document.getElementById("edit-name").value.trim(),
+      description: document.getElementById("edit-description").value.trim(),
+      unit: document.getElementById("edit-unit").value,
+      price_per_unit: Number(document.getElementById("edit-price").value || 0),
+      stock: Number(document.getElementById("edit-quantity").value || 0),
+    };
+    const res = await fetch(`${API_SUPPLIER}/products/${editSelection.id}/`, {
+      method: "PATCH",
+      headers: authHeaders(true),
+      body: JSON.stringify(body),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      msg.textContent = JSON.stringify(data);
+      return;
+    }
+    closeEdit();
+    load();
+  });
+
+  document.getElementById("cancel-edit").addEventListener("click", closeEdit);
+  document.getElementById("search-products").addEventListener("input", renderList);
+  load();
+</script>
+{% endblock %}

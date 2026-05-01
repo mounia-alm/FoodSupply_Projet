@@ -1,0 +1,54 @@
+{% extends "portal/base.html" %}
+{% block title %}Log in — Livrili{% endblock %}
+{% block content %}
+<section class="card" style="max-width:520px;">
+  <h1>Log in</h1>
+  <p class="muted">Authenticate against the Livrili auth microservice (JWT).</p>
+  <div class="grid" style="margin-top:14px;">
+    <div>
+      <label for="username">Username</label>
+      <input id="username" autocomplete="username">
+    </div>
+    <div>
+      <label for="password">Password</label>
+      <input id="password" type="password" autocomplete="current-password">
+    </div>
+    <div class="row">
+      <button type="button" id="btn-login">Log in</button>
+      <a class="btn secondary" href="/signup/">Need an account?</a>
+    </div>
+    <div id="msg" class="error"></div>
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+  document.getElementById("btn-login").addEventListener("click", async () => {
+    const msg = document.getElementById("msg");
+    msg.textContent = "";
+    try {
+      const username = document.getElementById("username").value.trim();
+      const password = document.getElementById("password").value;
+      const res = await fetch(`${API_AUTH}/login/`, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ username, password }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        msg.textContent = data.detail || JSON.stringify(data);
+        return;
+      }
+      sessionStorage.setItem("liv_access", data.access);
+      sessionStorage.setItem("liv_refresh", data.refresh);
+      sessionStorage.setItem("liv_user", JSON.stringify(data.user));
+      const role = data.user.role;
+      if (role === "restaurant") window.location.href = "/restaurant/";
+      else if (role === "supplier") window.location.href = "/supplier/";
+      else window.location.href = "/";
+    } catch (e) {
+      msg.textContent = "Network error: is the auth service running? (" + (e && e.message ? e.message : e) + ")";
+    }
+  });
+</script>
+{% endblock %}

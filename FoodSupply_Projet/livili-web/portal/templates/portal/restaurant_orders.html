@@ -1,0 +1,94 @@
+{% extends "portal/base.html" %}
+{% block title %}My orders — Livrili{% endblock %}
+{% block content %}
+<section class="card">
+  <h1>Restaurant orders</h1>
+  <p class="muted">Orders you created appear here with live status updates from suppliers.</p>
+  <div id="msg" class="error"></div>
+  <div id="table-wrap" class="card" style="margin-top:12px; padding:0; overflow:auto;">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Supplier</th>
+          <th>Status</th>
+          <th>Total</th>
+          <th>Phone</th>
+          <th>Contact</th>
+          <th>Address</th>
+          <th>Items</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+  function lineTotal(item) {
+    return Number(item.quantity || 0) * Number(item.product_price || 0);
+  }
+  async function load() {
+    const msg = document.getElementById("msg");
+    const tbody = document.getElementById("rows");
+    tbody.innerHTML = "";
+    if (!livToken()) {
+      msg.textContent = "Please log in.";
+      return;
+    }
+    const res = await fetch(`${API_ORDER}/orders/`, { headers: authHeaders(false) });
+    const data = await res.json();
+    if (!res.ok) {
+      msg.textContent = JSON.stringify(data);
+      return;
+    }
+    for (const o of data) {
+      const tr = document.createElement("tr");
+      const items = (o.items || []).map((i) => {
+        const unit = String(i.unit || "piece").toUpperCase();
+        return `<div>${i.product_name} - ${i.quantity} ${unit} - ${formatPriceDZD(i.product_price || 0)} => ${formatPriceDZD(lineTotal(i))}</div>`;
+      }).join("");
+      tr.innerHTML = `
+        <td>${o.id}</td>
+        <td>${o.supplier_name}</td>
+        <td>${o.status}</td>
+        <td>${formatPriceDZD(o.total_amount || 0)}</td>
+        <td>${o.restaurant_phone}</td>
+        <td>${o.contact_name}</td>
+        <td>${o.restaurant_address}</td>
+        <td>${items}</td>
+        <td><button type="button" class="secondary cancel-order" data-id="${o.id}" ${o.status === "cancelled" || o.status === "delivered" ? "disabled" : ""}>Cancel Order</button></td>
+      `;
+      tbody.appendChild(tr);
+    }
+    document.querySelectorAll(".cancel-order").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const id = btn.getAttribute("data-id");
+        if (!confirm("Cancel this order?")) return;
+        const patch = await fetch(`${API_ORDER}/orders/${id}/`, {
+          method: "PATCH",
+          headers: authHeaders(true),
+          body: JSON.stringify({ status: "cancelled" }),
+        });
+        if (patch.ok) {
+          load();
+          return;
+        }
+        const del = await fetch(`${API_ORDER}/orders/${id}/`, {
+          method: "DELETE",
+          headers: authHeaders(false),
+        });
+        if (!del.ok && del.status !== 204) {
+          const err = await del.json().catch(() => ({}));
+          alert(JSON.stringify(err));
+          return;
+        }
+        load();
+      });
+    });
+  }
+  load();
+</script>
+{% endblock %}

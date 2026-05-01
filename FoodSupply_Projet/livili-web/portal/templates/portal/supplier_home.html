@@ -1,0 +1,80 @@
+{% extends "portal/base.html" %}
+{% block title %}Supplier workspace — Livrili{% endblock %}
+{% block content %}
+<section class="card">
+  <h1>Supplier workspace</h1>
+  <p class="muted">Register your company profile once, then manage products and inbound orders.</p>
+  <div id="banner" class="banner muted">Checking supplier profile…</div>
+  <div id="profile-card" style="display:none;" class="card" hidden>
+    <h2>Create supplier profile</h2>
+    <div class="grid">
+      <div>
+        <label for="company_name">Company name</label>
+        <input id="company_name">
+      </div>
+      <div>
+        <label for="company_phone">Company phone</label>
+        <input id="company_phone">
+      </div>
+      <div>
+        <label for="company_address">Address</label>
+        <textarea id="company_address" rows="3"></textarea>
+      </div>
+      <div><button type="button" id="btn-save-profile">Save profile</button></div>
+      <div id="prof-msg" class="error"></div>
+    </div>
+  </div>
+  <div id="dash-links" style="display:none;" class="row">
+    <a class="btn" href="/supplier/products/">Manage products</a>
+    <a class="btn secondary" href="/supplier/orders/">Incoming orders</a>
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+  const banner = document.getElementById("banner");
+  const profileCard = document.getElementById("profile-card");
+  const dash = document.getElementById("dash-links");
+
+  async function boot() {
+    if (!livToken()) {
+      banner.textContent = "Please log in as a supplier.";
+      return;
+    }
+    const res = await fetch(`${API_SUPPLIER}/suppliers/resolve_me/`, { headers: authHeaders(false) });
+    if (res.ok) {
+      banner.textContent = "Profile ready.";
+      dash.style.display = "flex";
+      return;
+    }
+    banner.textContent = "Complete your supplier profile to continue.";
+    profileCard.style.display = "block";
+    profileCard.hidden = false;
+  }
+
+  document.getElementById("btn-save-profile").addEventListener("click", async () => {
+    const msg = document.getElementById("prof-msg");
+    msg.textContent = "";
+    const body = {
+      company_name: document.getElementById("company_name").value.trim(),
+      phone: document.getElementById("company_phone").value.trim(),
+      address: document.getElementById("company_address").value.trim(),
+    };
+    const res = await fetch(`${API_SUPPLIER}/suppliers/`, {
+      method: "POST",
+      headers: authHeaders(true),
+      body: JSON.stringify(body),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      msg.textContent = JSON.stringify(data);
+      return;
+    }
+    banner.textContent = "Profile saved.";
+    profileCard.style.display = "none";
+    dash.style.display = "flex";
+  });
+
+  boot();
+</script>
+{% endblock %}

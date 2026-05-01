@@ -1,0 +1,90 @@
+services:
+  traefik:
+  image: traefik:v2.10
+  command:
+    - "--providers.docker=true"
+    - "--providers.docker.exposedbydefault=false"
+    - "--api.insecure=true"
+  ports:
+    - "80:80"
+    - "8080:8080"
+  volumes:
+    - /var/run/docker.sock:/var/run/docker.sock
+  environment:
+  - DOCKER_HOST=unix:///var/run/docker.sock
+
+  consul:
+    image: hashicorp/consul:1.19
+    command: agent -dev -client=0.0.0.0 -ui
+    ports:
+      - "8500:8500"
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+  auth-service:
+    build: ./auth-service
+    environment:
+      DJANGO_SETTINGS_MODULE: auth_project.settings
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.auth.rule=PathPrefix(`/api/auth`)
+      - traefik.http.routers.auth.entrypoints=web
+      - traefik.http.routers.auth.priority=20
+      - traefik.http.services.auth.loadbalancer.server.port=8000
+
+  supplier-service:
+    build: ./supplier-service
+    environment:
+      DJANGO_SETTINGS_MODULE: supplier_project.settings
+    labels:
+      - traefik.enable=true
+      - 'traefik.http.routers.supplier.rule=(PathPrefix(`/api/suppliers`) || PathPrefix(`/api/products`) || PathPrefix(`/api/categories`))'
+      - traefik.http.routers.supplier.entrypoints=web
+      - traefik.http.routers.supplier.priority=20
+      - traefik.http.services.supplier.loadbalancer.server.port=8000
+
+  order-service:
+    build: ./order-service
+    environment:
+      DJANGO_SETTINGS_MODULE: order_project.settings
+      SUPPLIER_SERVICE_URL: http://supplier-service:8000
+      RABBITMQ_HOST: rabbitmq
+    depends_on:
+      - rabbitmq
+      - supplier-service
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.order.rule=PathPrefix(`/api/orders`)
+      - traefik.http.routers.order.entrypoints=web
+      - traefik.http.routers.order.priority=20
+      - traefik.http.services.order.loadbalancer.server.port=8000
+
+  notification-worker:
+    build: ./order-service
+    command: python manage.py consume_orders
+    environment:
+      DJANGO_SETTINGS_MODULE: order_project.settings
+      RABBITMQ_HOST: rabbitmq
+      SUPPLIER_SERVICE_URL: http://supplier-service:8000
+    depends_on:
+      - rabbitmq
+      - order-service
+
+  livili-web:
+    build: ./livili-web
+    environment:
+      DJANGO_SETTINGS_MODULE: livili_site.settings
+    depends_on:
+      - auth-service
+      - supplier-service
+      - order-service
+    labels:
+      - traefik.enable=true
+      - 'traefik.http.routers.web.rule=(Host(`localhost`) || Host(`127.0.0.1`)) && !PathPrefix(`/api`)'
+      - traefik.http.routers.web.entrypoints=web
+      - traefik.http.routers.web.priority=5
+      - traefik.http.services.web.loadbalancer.server.port=8000

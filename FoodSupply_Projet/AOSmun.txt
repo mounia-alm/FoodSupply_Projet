@@ -1,0 +1,76 @@
+Terminal 1 – Auth Service (port 8001)
+
+cd C:\Users\HP\auth-service
+venv\Scripts\activate
+python manage.py runserver 8001
+
+Terminal 2 – Supplier Service (port 8004)
+
+cd C:\Users\HP\supplier-service
+venv\Scripts\activate
+python manage.py runserver 8004
+
+Terminal 3 – Order Service (port 8003)
+
+cd C:\Users\HP\order-service
+venv\Scripts\activate
+python manage.py runserver 8003
+
+Terminal 4 – Frontend (port 5500)
+
+cd C:\Users\HP\frontend
+python -m http.server 5500
+
+http://localhost:5500
+ 
+Terminal 5 – Notification Service verifier notification 
+
+cd C:\Users\HP\notification-service
+venv\Scripts\activate
+python consumer.py 
+
+Terminal 6 – Consul
+
+cd C:\Users\HP\Downloads\consul_1.22.6_windows_amd64
+consul.exe agent -dev
+
+Terminal 7 – Traefik
+
+cd C:\Users\HP\Downloads\traefik_v3.6.13_windows_amd64
+traefik.exe --configFile=C:\traefik\traefik.yml
+
+API Auth (login)	http://localhost/api/auth/login/
+API Supplier (produits)	http://localhost/api/suppliers/products/
+API Order (commandes)	http://localhost/api/orders/orders/
+RabbitMQ dashboard	http://localhost:15672 (guest/guest)
+Consul dashboard	http://localhost:8500
+Traefik dashboard	http://localhost:8080
+
+Consul
+Télécharger : https://www.consul.io/downloads (fichier consul_1.22.6_windows_amd64.zip)
+
+Extraire consul.exe
+
+Lancer dans un terminal : consul.exe agent -dev
+
+Traefik
+Télécharger : https://github.com/traefik/traefik/releases (ex: traefik_v3.6.13_windows_amd64.zip)
+
+Extraire traefik.exe
+
+Lancer : traefik.exe --configFile=C:\traefik\traefik.yml (il devra d’abord créer C:\traefik avec les deux fichiers .yml que tu lui as fournis).
+
+RabbitMQ
+Télécharger et installer Erlang, puis RabbitMQ (liens standards).
+
+Tu peux même lui copier-coller ce petit guide :
+
+text
+1. Consul : télécharge consul.exe, lance "consul agent -dev"
+2. Traefik : télécharge traefik.exe, crée C:\traefik\ avec traefik.yml et dynamic.yml (fichiers fournis), puis lance "traefik --configFile=C:\traefik\traefik.yml"
+3. RabbitMQ : installe Erlang puis RabbitMQ, démarre le service.
+
+
+
+resto1
+mouniafateh26

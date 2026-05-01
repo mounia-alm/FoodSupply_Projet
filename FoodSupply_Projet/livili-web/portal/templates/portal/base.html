@@ -1,0 +1,273 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Livrili{% endblock %}</title>
+  <link rel="icon" href="{% static 'portal/logo.svg' %}">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --theme-dark: #14532d;
+      --theme-mid: #166534;
+      --theme-light: #86efac;
+      --theme-pale: #bbf7d0;
+      --sidebar-bg: #f0fdf4;
+      --sidebar-border: #bbf7d0;
+      --ink: #0f172a;
+      --muted: #3f6212;
+      --card: #ffffff;
+      --bg: #f0fdf4;
+      --border: #bbf7d0;
+    }
+    body.role-restaurant {
+      --theme-dark: #9a3412;
+      --theme-mid: #c2410c;
+      --theme-light: #fdba74;
+      --theme-pale: #fed7aa;
+      --sidebar-bg: #fff7ed;
+      --sidebar-border: #fed7aa;
+      --muted: #9a3412;
+      --bg: #fff7ed;
+      --border: #fed7aa;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      color: var(--ink);
+      background: linear-gradient(180deg, var(--bg), #ffffff 420px);
+      min-height: 100vh;
+    }
+    a { color: var(--theme-mid); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .layout {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 280px minmax(0, 1fr);
+    }
+    .sidebar {
+      background: var(--sidebar-bg);
+      border-right: 1px solid var(--sidebar-border);
+      padding: 20px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .brand-text {
+      font-size: 1.7rem;
+      font-weight: 800;
+      color: var(--theme-dark);
+      letter-spacing: 0.02em;
+      margin: 0;
+    }
+    .user-meta {
+      border: 1px solid var(--sidebar-border);
+      background: #fff;
+      border-radius: 12px;
+      padding: 12px;
+      font-size: 0.92rem;
+    }
+    .menu-item {
+      display: block;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid transparent;
+      color: var(--ink);
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .menu-item.active {
+      background: #fff;
+      border-color: var(--sidebar-border);
+      color: var(--theme-dark);
+    }
+    .menu-item:hover { text-decoration: none; border-color: var(--sidebar-border); }
+    .sidebar-bottom { margin-top: auto; }
+    .content {
+      padding: 20px;
+    }
+    main { max-width: 1100px; margin: 0 auto 64px; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px 22px;
+      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+    }
+    h1 { margin: 0 0 12px; font-size: 1.75rem; }
+    h2 { margin: 0 0 10px; font-size: 1.2rem; }
+    .muted { color: var(--muted); font-size: 0.95rem; }
+    .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+    label { font-size: 0.92rem; display: block; margin-bottom: 6px; color: var(--muted); }
+    input, select, textarea, button {
+      font: inherit;
+    }
+    input, select, textarea {
+      width: 100%;
+      max-width: 420px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: #fff;
+    }
+    button, .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 16px;
+      border-radius: 999px;
+      border: none;
+      cursor: pointer;
+      background: linear-gradient(90deg, var(--theme-dark), var(--theme-mid));
+      color: #ecfdf5;
+      font-weight: 600;
+      box-shadow: 0 8px 18px rgba(15, 23, 42, 0.2);
+    }
+    button.secondary {
+      background: #fff;
+      color: var(--ink);
+      border: 1px solid var(--border);
+      box-shadow: none;
+    }
+    .grid { display: grid; gap: 14px; }
+    .pill { font-size: 0.78rem; padding: 4px 10px; border-radius: 999px; background: #fff; border: 1px solid var(--theme-pale); color: var(--theme-dark); }
+    .supplier-block { margin-top: 22px; }
+    .product {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 14px;
+      background: #f7fee7;
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
+    th, td { padding: 10px 8px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
+    .banner {
+      padding: 14px 16px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      margin-bottom: 16px;
+      background: #ecfdf5;
+    }
+    .error { color: #b00020; font-size: 0.92rem; margin-top: 8px; }
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; }
+      .sidebar { border-right: none; border-bottom: 1px solid var(--sidebar-border); }
+      .content { padding: 14px; }
+    }
+  </style>
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div>
+        <h1 class="brand-text">Livrili</h1>
+      </div>
+      <div class="user-meta">
+        <div id="sidebar-user-name"><strong>Guest</strong></div>
+        <div id="sidebar-user-phone" class="muted">Phone: -</div>
+        <div id="sidebar-user-address" class="muted">Address: -</div>
+      </div>
+      <nav id="sidebar-nav" class="space-y-2"></nav>
+      <div class="sidebar-bottom">
+        <button type="button" id="logout-btn" class="w-full">Logout</button>
+      </div>
+    </aside>
+    <div class="content">
+      <main>
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+  </div>
+  <script>
+    window.API_AUTH = "{{ API_AUTH|escapejs }}";
+    window.API_SUPPLIER = "{{ API_SUPPLIER|escapejs }}";
+    window.API_ORDER = "{{ API_ORDER|escapejs }}";
+    /* Page scripts use API_AUTH etc.; only window.* was set before, so fetch URLs broke. */
+    var API_AUTH = window.API_AUTH;
+    var API_SUPPLIER = window.API_SUPPLIER;
+    var API_ORDER = window.API_ORDER;
+    function livToken() {
+      return sessionStorage.getItem("liv_access") || "";
+    }
+    function authHeaders(json) {
+      const h = {};
+      if (json) h["Content-Type"] = "application/json";
+      const t = livToken();
+      if (t) h["Authorization"] = "Bearer " + t;
+      return h;
+    }
+    function formatPriceDZD(price) {
+      const n = Number(price || 0);
+      return `${Number.isFinite(n) ? n : 0} DZD`;
+    }
+    function formatUnitLabel(unit, qty) {
+      const clean = String(unit || "piece").toUpperCase();
+      if (clean === "PIECE") return `${qty} pieces`;
+      return `${qty} ${clean}`;
+    }
+    function getUser() {
+      return JSON.parse(sessionStorage.getItem("liv_user") || "{}");
+    }
+    function currentRole() {
+      const u = getUser();
+      if (u.role) return u.role;
+      if (location.pathname.startsWith("/supplier/")) return "supplier";
+      if (location.pathname.startsWith("/restaurant/")) return "restaurant";
+      return "";
+    }
+    function setupSidebar() {
+      const user = getUser();
+      const role = currentRole();
+      if (role === "restaurant") document.body.classList.add("role-restaurant");
+
+      const name = user.full_name || user.username || (role ? role : "Guest");
+      const phone = user.phone || user.phone_number || "-";
+      const address = user.address || user.restaurant_address || user.company_address || "-";
+      document.getElementById("sidebar-user-name").innerHTML = `<strong>${name}</strong>`;
+      document.getElementById("sidebar-user-phone").textContent = `Phone: ${phone}`;
+      document.getElementById("sidebar-user-address").textContent = `Address: ${address}`;
+
+      const nav = document.getElementById("sidebar-nav");
+      const publicItems = [
+        { href: "/", label: "Home" },
+        { href: "/signup/", label: "Sign up" },
+        { href: "/login/", label: "Log in" }
+      ];
+      const supplierItems = [
+        { href: "/supplier/", label: "Dashboard" },
+        { href: "/supplier/products/", label: "Products" },
+        { href: "/supplier/orders/", label: "Incoming orders" }
+      ];
+      const restaurantItems = [
+        { href: "/restaurant/", label: "Dashboard" },
+        { href: "/restaurant/catalog/", label: "Catalog" },
+        { href: "/restaurant/orders/", label: "My orders" }
+      ];
+
+      const items = role === "supplier" ? supplierItems : role === "restaurant" ? restaurantItems : publicItems;
+      nav.innerHTML = "";
+      items.forEach((item) => {
+        const a = document.createElement("a");
+        a.href = item.href;
+        a.textContent = item.label;
+        a.className = "menu-item";
+        if (location.pathname === item.href || (item.href !== "/" && location.pathname.startsWith(item.href))) {
+          a.classList.add("active");
+        }
+        nav.appendChild(a);
+      });
+    }
+    document.getElementById("logout-btn").addEventListener("click", () => {
+      sessionStorage.removeItem("liv_access");
+      sessionStorage.removeItem("liv_refresh");
+      sessionStorage.removeItem("liv_user");
+      location.href = "/login/";
+    });
+    setupSidebar();
+  </script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>
