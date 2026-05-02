@@ -1,76 +1,157 @@
-Terminal 1 – Auth Service (port 8001)
+# Guide d'evaluation - Projet Livrili
 
-cd C:\Users\HP\auth-service
-venv\Scripts\activate
-python manage.py runserver 8001
+## Configuration requise
 
-Terminal 2 – Supplier Service (port 8004)
+- Docker Desktop installe
+- Git installe
+- Navigateur web (Chrome, Firefox ou Edge)
 
-cd C:\Users\HP\supplier-service
-venv\Scripts\activate
-python manage.py runserver 8004
+---
 
-Terminal 3 – Order Service (port 8003)
+## Etape 1 : Cloner le projet
 
-cd C:\Users\HP\order-service
-venv\Scripts\activate
-python manage.py runserver 8003
+git clone https://github.com/nom-utilisateur/Livrili-Microservices.git
+cd Livrili-Microservices
 
-Terminal 4 – Frontend (port 5500)
+---
 
-cd C:\Users\HP\frontend
-python -m http.server 5500
+## Etape 2 : Demarrer Docker Desktop
 
-http://localhost:5500
- 
-Terminal 5 – Notification Service verifier notification 
+Ouvrez Docker Desktop et attendez que le moteur soit en marche (icone verte).
 
-cd C:\Users\HP\notification-service
-venv\Scripts\activate
-python consumer.py 
+---
 
-Terminal 6 – Consul
+## Etape 3 : Lancer les services
 
-cd C:\Users\HP\Downloads\consul_1.22.6_windows_amd64
-consul.exe agent -dev
+docker-compose up -d
 
-Terminal 7 – Traefik
+Attendez 30 secondes que tous les conteneurs soient demarres.
 
-cd C:\Users\HP\Downloads\traefik_v3.6.13_windows_amd64
-traefik.exe --configFile=C:\traefik\traefik.yml
+---
 
-API Auth (login)	http://localhost/api/auth/login/
-API Supplier (produits)	http://localhost/api/suppliers/products/
-API Order (commandes)	http://localhost/api/orders/orders/
-RabbitMQ dashboard	http://localhost:15672 (guest/guest)
-Consul dashboard	http://localhost:8500
-Traefik dashboard	http://localhost:8080
+## Etape 4 : Verifier l'etat des conteneurs
 
-Consul
-Télécharger : https://www.consul.io/downloads (fichier consul_1.22.6_windows_amd64.zip)
+docker ps --format "table {{.Names}}\t{{.Ports}}\t{{.Status}}"
 
-Extraire consul.exe
+Resultat attendu : 8 conteneurs avec le statut "Up"
 
-Lancer dans un terminal : consul.exe agent -dev
+- auth-service : port 8001
+- user-service : port 8002
+- product-service : port 8003
+- order-service : port 8004
+- consul : port 8500
+- rabbitmq : port 15672
+- traefik : ports 80 et 8080
+- frontend : port 5173
 
-Traefik
-Télécharger : https://github.com/traefik/traefik/releases (ex: traefik_v3.6.13_windows_amd64.zip)
+---
 
-Extraire traefik.exe
+## Etape 5 : Tester les URLs
 
-Lancer : traefik.exe --configFile=C:\traefik\traefik.yml (il devra d’abord créer C:\traefik avec les deux fichiers .yml que tu lui as fournis).
+Frontend : http://localhost:5173
+API Produits : http://localhost:8003/api/products/
+API Auth : http://localhost:8001/api/auth/login/
+Consul : http://localhost:8500
+RabbitMQ : http://localhost:15672 (login: guest, mot de passe: guest)
+Traefik : http://localhost:8080
 
-RabbitMQ
-Télécharger et installer Erlang, puis RabbitMQ (liens standards).
+---
 
-Tu peux même lui copier-coller ce petit guide :
+## Etape 6 : Se connecter au frontend
 
-text
-1. Consul : télécharge consul.exe, lance "consul agent -dev"
-2. Traefik : télécharge traefik.exe, crée C:\traefik\ avec traefik.yml et dynamic.yml (fichiers fournis), puis lance "traefik --configFile=C:\traefik\traefik.yml"
-3. RabbitMQ : installe Erlang puis RabbitMQ, démarre le service.
+1. Ouvrez http://localhost:5173
+2. Email : admin@example.com
+3. Mot de passe : admin123
 
+---
 
+## Etape 7 : Tester les fonctionnalites
 
-resto1
-mouniafateh26
+Cote Restaurateur (theme orange) :
+
+- Consulter la liste des produits
+- Filtrer les produits par fournisseur
+- Rechercher un produit
+- Ajouter un produit au panier
+- Modifier la quantite dans le panier
+- Passer une commande
+- Annuler une commande
+
+Cote Fournisseur (theme vert) :
+
+- Consulter la liste des produits
+- Ajouter un nouveau produit
+- Modifier un produit existant
+- Supprimer un produit
+- Voir les commandes recues
+
+---
+
+## Etape 8 : Tester la validation de stock
+
+1. Connectez-vous en tant que restaurateur
+2. Choisissez un produit avec un stock faible
+3. Commandez une quantite superieure au stock
+4. Message attendu : "Requested quantity exceeds available stock"
+
+Cette validation est faite cote backend pour eviter les contournements.
+
+---
+
+## Etape 9 : Preuves techniques
+
+Preuve 1 : Conteneurs Docker
+docker ps --format "table {{.Names}}\t{{.Ports}}"
+
+Preuve 2 : Adresses IP distinctes
+docker network inspect foodsupply_projet_default | findstr "Name\" \"IPv4Address"
+
+Preuve 3 : API REST
+curl http://localhost:8003/api/products/
+
+Preuve 4 : Consul (Service Registry)
+Ouvrez http://localhost:8500 et cliquez sur "Services"
+
+Preuve 5 : Traefik (Reverse Proxy)
+Ouvrez http://localhost:8080 et cliquez sur "HTTP Routers"
+
+Preuve 6 : RabbitMQ (Asynchrone)
+Ouvrez http://localhost:15672 (guest/guest) et cliquez sur "Queues"
+
+---
+
+## Etape 10 : Arreter les services
+
+docker-compose down
+
+---
+
+## Grille d'evaluation
+
+Conception : 25 points
+Implementation : 30 points
+Deploiement multi-serveurs : 20 points
+Asynchrone + securite : 15 points
+Presentation + documentation : 10 points
+Total : 100 points
+
+---
+
+## Problemes courants
+
+Port deja utilise : netstat -ano | findstr :8001
+Docker ne demarre pas : Redemarrez Docker Desktop
+Container en erreur : docker-compose logs nom_container
+Page blanche : Verifiez que tous les services sont "Up"
+
+---
+
+## Contact
+
+Groupe 05 :
+ALMI Mounia Taous
+ZERROUATI Imene
+BENAZOUZ Ayat
+
+Module : Architecture Orientee Service
+Annee : 2025/2026
